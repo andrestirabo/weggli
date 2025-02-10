@@ -28,14 +28,15 @@ use regex::Regex;
 use std::cell::RefCell;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 use std::{collections::HashSet, fs};
 use std::{io::prelude::*, path::PathBuf};
 use thread_local::ThreadLocal;
 use tree_sitter::Tree;
 use walkdir::WalkDir;
-use weggli::RegexMap;
+use weggli::RegexError;
 
+use weggli::process_regexes;
 use weggli::parse_search_pattern;
 use weggli::query::QueryTree;
 use weggli::result::QueryResult;
@@ -192,44 +193,6 @@ fn main() {
             s.spawn(move |_| multi_query_worker(results_rx, w.len(), before, after, enable_line_numbers));
         }
     });
-}
-
-enum RegexError {
-    InvalidArg(String),
-    InvalidRegex(regex::Error),
-}
-
-impl From<regex::Error> for RegexError {
-    fn from(err: regex::Error) -> RegexError {
-        RegexError::InvalidRegex(err)
-    }
-}
-
-/// Validate all passed regexes and compile them.
-/// Returns an error if an invalid regex is supplied otherwise return a RegexMap
-fn process_regexes(regexes: &[String]) -> Result<RegexMap, RegexError> {
-    let mut result = HashMap::new();
-
-    for r in regexes {
-        let mut s = r.splitn(2, '=');
-        let var = s.next().ok_or_else(|| RegexError::InvalidArg(r.clone()))?;
-        let raw_regex = s.next().ok_or_else(|| RegexError::InvalidArg(r.clone()))?;
-
-        let mut normalized_var = if var.starts_with('$') {
-            var.to_string()
-        } else {
-            "$".to_string() + var
-        };
-        let negative = normalized_var.ends_with('!');
-
-        if negative {
-            normalized_var.pop(); // remove !
-        }
-
-        let regex = Regex::new(raw_regex)?;
-        result.insert(normalized_var, (negative, regex));
-    }
-    Ok(RegexMap::new(result))
 }
 
 /// Recursively iterate through all files under `path` that match an ending listed in `extensions`
