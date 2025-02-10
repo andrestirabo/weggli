@@ -18,14 +18,29 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
+use crate::process_regexes;
 use crate::parse_search_pattern;
 use crate::query::QueryTree;
 use crate::result::QueryResult;
 use crate::QueryError;
+use crate::RegexError;
 
 impl std::convert::From<QueryError> for PyErr {
     fn from(err: QueryError) -> PyErr {
         PyValueError::new_err(err.message)
+    }
+}
+
+impl std::convert::From<RegexError> for PyErr {
+    fn from(err: RegexError) -> PyErr {
+        let msg = match err {
+            RegexError::InvalidArg(s) => format!(
+                "'{}' is not a valid argument of the form var=regex",
+                s
+            ),
+            RegexError::InvalidRegex(s) => format!("Regex error {}", s),
+        };
+        PyValueError::new_err(msg)
     }
 }
 
@@ -39,10 +54,16 @@ struct QueryResultPy {
     qr: QueryResult,
 }
 
-#[pyfunction(cpp = "false")]
-#[pyo3(text_signature = "(query, cpp)")]
-fn parse_query(q: &str, cpp: bool) -> PyResult<QueryTreePy> {
-    let qt = parse_search_pattern(q, cpp, false, None)?;
+#[pyfunction(cpp = "false", regexes = "None")]
+#[pyo3(text_signature = "(query, cpp, regexes)")]
+fn parse_query(q: &str, cpp: bool, regexes: Option<Vec<&str>>) -> PyResult<QueryTreePy> {
+    let vec_string = match regexes {
+        Some(x) => x.into_iter().map(String::from).collect(),
+        None => [].to_vec(),
+    };
+
+    let regex_constraints = process_regexes(&vec_string)?;
+    let qt = parse_search_pattern(q, cpp, false, Some(regex_constraints))?;
     Ok(QueryTreePy { qt })
 }
 

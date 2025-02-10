@@ -107,6 +107,45 @@ impl RegexMap {
     }
 }
 
+pub enum RegexError {
+    InvalidArg(String),
+    InvalidRegex(regex::Error),
+}
+
+impl From<regex::Error> for RegexError {
+    fn from(err: regex::Error) -> RegexError {
+        RegexError::InvalidRegex(err)
+    }
+}
+
+/// Validate all passed regexes and compile them.
+/// Returns an error if an invalid regex is supplied otherwise return a RegexMap
+pub fn process_regexes(regexes: &[String]) -> Result<RegexMap, RegexError> {
+    let mut result = HashMap::new();
+
+    for r in regexes {
+        eprintln!("regex: {}", r);
+        let mut s = r.splitn(2, '=');
+        let var = s.next().ok_or_else(|| RegexError::InvalidArg(r.clone()))?;
+        let raw_regex = s.next().ok_or_else(|| RegexError::InvalidArg(r.clone()))?;
+
+        let mut normalized_var = if var.starts_with('$') {
+            var.to_string()
+        } else {
+            "$".to_string() + var
+        };
+        let negative = normalized_var.ends_with('!');
+
+        if negative {
+            normalized_var.pop(); // remove !
+        }
+
+        let regex = Regex::new(raw_regex)?;
+        result.insert(normalized_var, (negative, regex));
+    }
+    Ok(RegexMap::new(result))
+}
+
 /// Translate the search pattern in `pattern` into a weggli QueryTree.
 /// `is_cpp` enables C++ mode. `force_query` can be used to allow queries with syntax errors.
 /// We support some basic normalization (adding { } around queries) and store the normalized form
