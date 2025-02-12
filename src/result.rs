@@ -108,6 +108,11 @@ impl<'b> QueryResult {
         }
     }
 
+    /// Return the name of the variables for the query result.
+    pub fn variables_names(&self) -> Vec<String> {
+        return self.vars.keys().cloned().collect();
+    }
+
     /// Try to merge two QueryResults from the same source file.
     /// The function returns None if the variable assignments for the two results differ.
     /// If `enforce_order` is set this can fail because the new ranges

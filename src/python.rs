@@ -103,6 +103,13 @@ fn captured_value(p: &QueryResultPy, key: &str, source: &str) -> PyResult<Option
     Ok(r)
 }
 
+#[pyfunction]
+#[pyo3(text_signature = "(q)")]
+fn variables_names(p: &QueryResultPy) -> PyResult<Vec<String>> {
+    let r = p.qr.variables_names();
+    Ok(r)
+}
+
 #[pyfunction(color = "None")]
 #[pyo3(text_signature = "(q, source, color)")]
 fn display(p: &QueryResultPy, source: &str, color: Option<bool>) -> PyResult<String> {
@@ -121,6 +128,7 @@ fn weggli(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(identifiers, m)?)?;
     m.add_function(wrap_pyfunction!(matches, m)?)?;
     m.add_function(wrap_pyfunction!(captured_value, m)?)?;
+    m.add_function(wrap_pyfunction!(variables_names, m)?)?;
     m.add_function(wrap_pyfunction!(display, m)?)?;
 
     Ok(())
